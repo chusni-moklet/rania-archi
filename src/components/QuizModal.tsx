@@ -123,7 +123,7 @@ export default function QuizModal({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     sounds.playPop();
     if (currentIdx + 1 < questions.length) {
       setIsAnswered(false);
@@ -133,15 +133,19 @@ export default function QuizModal({
       // Selesaikan kuis dan hentikan timer
       setTimerActive(false);
 
-      // Catat rekor ke Leaderboard Best Player (Top 10)
+      // Catat rekor ke Leaderboard Best Player (Supabase Cloud + LocalStorage)
       const finalName = studentName || nameInput.trim() || "Rania";
-      const { rank } = recordQuizCompletion({
-        name: finalName,
-        timeSeconds: secondsElapsed,
-        score: correctCount,
-        totalQuestions: questions.length,
-      });
-      setEarnedRank(rank);
+      try {
+        const { rank } = await recordQuizCompletion({
+          name: finalName,
+          timeSeconds: secondsElapsed,
+          score: correctCount,
+          totalQuestions: questions.length,
+        });
+        setEarnedRank(rank);
+      } catch {
+        // Fallback
+      }
 
       setStep("completed");
       sounds.playSuccess();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Trophy,
@@ -9,13 +9,17 @@ import {
   Zap,
   ArrowRight,
   RefreshCw,
+  Globe2,
+  Database,
 } from "lucide-react";
 import { sounds } from "./AudioEffects";
 import {
   LeaderboardEntry,
   getLeaderboard,
+  fetchLeaderboard,
   formatTime,
   resetLeaderboard,
+  isOnlineMode,
 } from "@/data/leaderboard";
 
 interface LeaderboardModalProps {
@@ -32,6 +36,34 @@ export default function LeaderboardModal({
   currentStudentName,
 }: LeaderboardModalProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => getLeaderboard());
+  const [isLoading, setIsLoading] = useState(false);
+  const online = isOnlineMode();
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchLeaderboard();
+      setLeaderboard(data);
+    } catch {
+      // Fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let ignore = false;
+    if (isOpen) {
+      fetchLeaderboard().then((data) => {
+        if (!ignore) {
+          setLeaderboard(data);
+        }
+      });
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -40,9 +72,9 @@ export default function LeaderboardModal({
   const top3 = leaderboard[2];
   const rest = leaderboard.slice(3, 10);
 
-  const handleReset = () => {
+  const handleReset = async () => {
     sounds.playPop();
-    const def = resetLeaderboard();
+    const def = await resetLeaderboard();
     setLeaderboard(def);
   };
 
@@ -68,9 +100,22 @@ export default function LeaderboardModal({
                 <span>Papan Juara Tercepat</span>
                 <Crown className="w-4 h-4 text-yellow-300 fill-yellow-300 inline" />
               </h2>
-              <p className="text-[13px] text-purple-200 font-bold mt-0.5">
-                Top 10 Pemain Tercepat 10 Soal Matematika
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[12px] text-purple-200 font-bold">
+                  Top 10 Pemain Tercepat 10 Soal
+                </span>
+                {online ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-200 bg-emerald-950/40 px-2 py-0.2 rounded-full border border-emerald-400/30">
+                    <Globe2 className="w-3 h-3 text-emerald-400" />
+                    <span>Supabase Cloud</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-200 bg-yellow-950/40 px-2 py-0.2 rounded-full border border-yellow-400/30">
+                    <Database className="w-3 h-3 text-yellow-400" />
+                    <span>Mode Lokal</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -87,29 +132,42 @@ export default function LeaderboardModal({
 
         {/* Konten Scrollable */}
         <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
-          {/* Info Banner Rekor */}
+          {/* Info Banner Rekor & Refresh */}
           <div className="p-3 bg-gradient-to-r from-amber-50 to-purple-50 rounded-2xl border border-amber-200/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-white flex-shrink-0 shadow-xs">
                 <Timer className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
                   Rekor Tercepat Saat Ini
                 </span>
-                <span className="text-[15px] font-black text-[#8B5CF6]">
+                <span className="text-[14px] sm:text-[15px] font-black text-[#8B5CF6]">
                   {top1?.name || "Rania Archi"} ({formatTime(top1?.timeSeconds || 38)})
                 </span>
               </div>
             </div>
-            <button
-              onClick={handleReset}
-              title="Reset data ke standar latihan"
-              className="text-[12px] font-extrabold text-purple-600 hover:text-purple-800 flex items-center gap-1 cursor-pointer bg-white px-2.5 py-1 rounded-full border border-purple-200 shadow-2xs hover:bg-purple-50"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  handleRefresh();
+                }}
+                disabled={isLoading}
+                title="Segarkan data peringkat"
+                className="text-[12px] font-extrabold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer bg-white px-2.5 py-1 rounded-full border border-purple-200 shadow-2xs hover:bg-purple-50 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin text-purple-600" : ""}`} />
+                <span>Segarkan</span>
+              </button>
+              <button
+                onClick={handleReset}
+                title="Reset data ke standar latihan"
+                className="text-[11px] font-bold text-gray-400 hover:text-gray-600 px-1.5 py-1 rounded cursor-pointer"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           {/* Podium Top 3 (1st, 2nd, 3rd) */}
@@ -165,7 +223,7 @@ export default function LeaderboardModal({
                   {top3.name}
                 </span>
                 <span className="text-[11px] font-black text-[#8B5CF6] mt-0.5 flex items-center gap-0.5">
-                  <Timer className="w-3 h-3 text-amber-500" />
+                  <Timer className="w-3.5 h-3.5 text-amber-500" />
                   {formatTime(top3.timeSeconds)}
                 </span>
                 <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full mt-1">

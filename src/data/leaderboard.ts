@@ -1,3 +1,5 @@
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
 export interface LeaderboardEntry {
   id: string;
   name: string;
@@ -96,15 +98,42 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
 
 const LEADERBOARD_KEY = "raniaarchi_leaderboard_top10";
 
-/** Format total seconds into mm:ss (e.g., 45 -> "00:45", 85 -> "01:25") */
+/** Format detik ke string mm:ss (contoh: 38 -> "00:38", 85 -> "01:25") */
 export function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-/** Retrieve current Top 10 from localStorage or return default benchmark players */
-export function getLeaderboard(): LeaderboardEntry[] {
+/** Mengonversi tanggal ISO ke label bahasa Indonesia */
+function formatEntryDate(dateString?: string): string {
+  if (!dateString) return "Baru saja";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    if (diffHours < 24 && d.getDate() === now.getDate()) {
+      return "Hari ini";
+    }
+    if (diffHours < 48) {
+      return "Kemarin";
+    }
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  } catch {
+    return "Baru saja";
+  }
+}
+
+/** Mengecek apakah mode online Supabase sedang aktif */
+export function isOnlineMode(): boolean {
+  return isSupabaseConfigured();
+}
+
+/** Mengambil data dari localStorage secara instan (synchronous fallback) */
+export function getLocalLeaderboard(): LeaderboardEntry[] {
   if (typeof window === "undefined") {
     return DEFAULT_LEADERBOARD;
   }
@@ -125,22 +154,96 @@ export function getLeaderboard(): LeaderboardEntry[] {
 }
 
 /**
- * Save new player result to leaderboard.
- * Sorting priority:
- * 1) Higher score (number of correct answers)
- * 2) Lower time (fastest in seconds)
- * Keeps only the Top 10 fastest players.
- * Returns rank (1-10) if qualified, or null if outside top 10.
+ * Mengambil data Top 10 Best Player.
+ * Jika Supabase sudah dikonfigurasi, akan mengambil langsung dari Cloud Database.
+ * Jika offline atau belum dikonfigurasi, otomatis menggunakan localStorage.
  */
-export function recordQuizCompletion(params: {
+export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("leaderboard")
+        .select("id, name, time_seconds, score, total_questions, created_at, badge")
+        .order("score", { ascending: false })
+        .order("time_seconds", { ascending: true })
+        .limit(10);
+
+      if (!error && data && data.length > 0) {
+        const mapped: LeaderboardEntry[] = data.map((row) => ({
+          id: String(row.id),
+          name: row.name,
+          timeSeconds: Number(row.time_seconds),
+          score: Number(row.score),
+          totalQuestions: Number(row.total_questions || 10),
+          date: formatEntryDate(row.created_at),
+          badge: row.badge || undefined,
+        }));
+
+        // Simpan cache ke localStorage untuk offline-readiness
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(mapped));
+          } catch {
+            // Ignore
+          }
+        }
+        return mapped;
+      }
+    } catch {
+      // Fallback ke localStorage bila gagal terhubung ke Supabase
+    }
+  }
+
+  return getLocalLeaderboard();
+}
+
+/** Alias synchronous untuk render pertama */
+export function getLeaderboard(): LeaderboardEntry[] {
+  return getLocalLeaderboard();
+}
+
+/**
+ * Mencatat hasil kuis siswa ke Leaderboard (Supabase Cloud + LocalStorage).
+ * Urutan pemeringkatan:
+ * 1. Skor Nilai tertinggi (jumlah jawaban benar)
+ * 2. Waktu pengerjaan tercepat (detik terendah)
+ * Mengembalikan objek { rank: 1-10 | null, leaderboard: LeaderboardEntry[] }
+ */
+export async function recordQuizCompletion(params: {
   name: string;
   timeSeconds: number;
   score: number;
   totalQuestions: number;
-}): { rank: number | null; leaderboard: LeaderboardEntry[] } {
-  const current = getLeaderboard();
+}): Promise<{ rank: number | null; leaderboard: LeaderboardEntry[] }> {
   const safeName = params.name.trim() || "Pemain RaniaArchi";
+  const badge = params.score === 10 && params.timeSeconds <= 45 ? "Paling Kilat 🚀" : undefined;
 
+  // 1. Simpan ke Supabase jika aktif
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      await supabase.from("leaderboard").insert({
+        name: safeName,
+        time_seconds: Math.max(1, params.timeSeconds),
+        score: params.score,
+        total_questions: params.totalQuestions,
+        badge: badge || null,
+      });
+
+      // Ambil 10 teratas terbaru dari Supabase
+      const freshLeaderboard = await fetchLeaderboard();
+      const rankIdx = freshLeaderboard.findIndex(
+        (e) => e.name.toLowerCase() === safeName.toLowerCase() && e.score === params.score
+      );
+      const onlineRank = rankIdx !== -1 ? rankIdx + 1 : null;
+
+      return { rank: onlineRank, leaderboard: freshLeaderboard };
+    } catch {
+      // Fallback ke penyimpanan lokal jika koneksi Supabase bermasalah
+    }
+  }
+
+  // 2. Fallback Penyimpanan Lokal (localStorage)
+  const current = getLocalLeaderboard();
   const newEntry: LeaderboardEntry = {
     id: `entry-${Date.now()}`,
     name: safeName,
@@ -148,16 +251,11 @@ export function recordQuizCompletion(params: {
     score: params.score,
     totalQuestions: params.totalQuestions,
     date: "Baru saja",
-    badge: params.score === 10 && params.timeSeconds <= 45 ? "Paling Kilat 🚀" : undefined,
+    badge,
   };
 
-  // Combine and sort
   const combined = [...current, newEntry].sort((a, b) => {
-    // 1. Sort by score descending (higher is better)
-    if (b.score !== a.score) {
-      return b.score - a.score;
-    }
-    // 2. Sort by time ascending (lower seconds is faster)
+    if (b.score !== a.score) return b.score - a.score;
     return a.timeSeconds - b.timeSeconds;
   });
 
@@ -169,20 +267,20 @@ export function recordQuizCompletion(params: {
     try {
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(top10));
     } catch {
-      // Fallback
+      // Ignore
     }
   }
 
   return { rank, leaderboard: top10 };
 }
 
-/** Reset leaderboard back to default benchmarks */
-export function resetLeaderboard(): LeaderboardEntry[] {
+/** Reset data ke default benchmark */
+export async function resetLeaderboard(): Promise<LeaderboardEntry[]> {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(DEFAULT_LEADERBOARD));
     } catch {
-      // Fallback
+      // Ignore
     }
   }
   return DEFAULT_LEADERBOARD;

@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #8B5CF6;
+  --color-primary-hover: #7C3AED;
+  --color-primary-light: #DDD6FE;
+  --color-primary-surface: #EDE9FE;
+  
+  --color-secondary: #F59E0B;
+  --color-secondary-hover: #D97706;
+  --color-secondary-light: #FEF3C7;
+  
+  --color-app-bg: #F3E8FF;
+  --color-surface: #FFFFFF;
+  
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #6B7280;
+  --color-success: #10B981;
+  --color-success-light: #D1FAE5;
+
+  --font-nunito: var(--font-nunito), "Nunito", "Quicksand", system-ui, -apple-system, sans-serif;
+
+  --radius-pill: 9999px;
+  --radius-card-large: 24px;
+  --radius-card-grid: 16px;
+}
+
+:root {
+  --background: #F3E8FF;
+  --foreground: #1F2937;
+}
+
+body {
+  background-color: #F3E8FF;
+  color: #1F2937;
+  font-family: var(--font-nunito), "Nunito", "Quicksand", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Claymorphic Tactile Shadows & Pillows */
+.clay-card-hero {
+  background: linear-gradient(135deg, #9333EA 0%, #8B5CF6 60%, #7C3AED 100%);
+  border-radius: 24px;
+  box-shadow: 
+    0 16px 32px -8px rgba(139, 92, 246, 0.45),
+    0 4px 12px rgba(124, 58, 237, 0.25),
+    inset 0 3px 6px rgba(255, 255, 255, 0.45),
+    inset 0 -5px 0 rgba(109, 40, 217, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.clay-card-surface {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 
+    0 8px 20px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 2px 4px rgba(255, 255, 255, 0.95),
+    inset 0 -4px 0 rgba(229, 231, 235, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+}
+
+.clay-card-surface:hover,
+.clay-card-surface:active {
+  transform: scale(0.98);
+  box-shadow: 
+    0 4px 10px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 0 rgba(229, 231, 235, 0.85);
+}
+
+.clay-card-challenge {
+  background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 65%, #D97706 100%);
+  border-radius: 24px;
+  box-shadow: 
+    0 14px 28px -6px rgba(245, 158, 11, 0.4),
+    0 4px 10px rgba(217, 119, 6, 0.2),
+    inset 0 3px 5px rgba(255, 255, 255, 0.55),
+    inset 0 -4px 0 rgba(180, 83, 9, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clay-card-challenge:hover,
+.clay-card-challenge:active {
+  transform: scale(0.98);
+}
+
+.clay-button-primary {
+  background: linear-gradient(180deg, #A855F7 0%, #8B5CF6 100%);
+  color: #FFFFFF;
+  border-radius: 9999px;
+  box-shadow: 
+    0 6px 14px rgba(139, 92, 246, 0.35),
+    inset 0 2px 2px rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 #6D28D9;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  min-height: 48px;
+  min-width: 48px;
+}
+
+.clay-button-primary:hover,
+.clay-button-primary:active {
+  transform: scale(0.98);
+  box-shadow: 
+    0 2px 6px rgba(139, 92, 246, 0.3),
+    inset 0 -1px 0 #6D28D9;
+}
+
+.clay-button-white {
+  background: #FFFFFF;
+  color: #7C3AED;
+  border-radius: 9999px;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.1),
+    inset 0 2px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 0 #DDD6FE;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  min-height: 48px;
+  min-width: 48px;
+}
+
+.clay-button-white:hover,
+.clay-button-white:active {
+  transform: scale(0.98);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 0 #DDD6FE;
+}
+
+.clay-pill-badge {
+  border-radius: 9999px;
+  box-shadow: 
+    0 3px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+}
+
+/* Correct Answer Animation State */
+@keyframes correct-bounce {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.08); }
+  65% { transform: scale(0.97); }
+  100% { transform: scale(1.05); }
+}
+
+.animate-correct-answer {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+  animation: correct-bounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  box-shadow: 
+    0 12px 24px rgba(16, 185, 129, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.6),
+    inset 0 -4px 0 #059669 !important;
+}
+
+/* Floating animation for mascot/sparkles */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(1.5deg); }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 4s ease-in-out infinite;
+}
+
+/* Sparkle pulse */
+@keyframes star-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  50% { transform: scale(1.15) rotate(12deg); opacity: 1; }
+}
+
+.animate-star-twinkle {
+  animation: star-twinkle 2.5s ease-in-out infinite;
+}
+
+/* Accessible focus outlines */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #8B5CF6 !important;
+  outline-offset: 2px !important;
+}

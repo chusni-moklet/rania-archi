@@ -1,7 +1,19 @@
 "use client";
 
 import React from "react";
-import { Star, Flame, Volume2, VolumeX, Sparkles, BookOpen, Zap, Bot, Trophy, User } from "lucide-react";
+import {
+  Star,
+  Flame,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  BookOpen,
+  Zap,
+  Bot,
+  Trophy,
+  User,
+  Crown,
+} from "lucide-react";
 import { sounds } from "./AudioEffects";
 
 interface HeaderProps {
@@ -14,6 +26,7 @@ interface HeaderProps {
   onOpenTables?: () => void;
   onOpenAi?: () => void;
   onOpenProfile?: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 export default function Header({
@@ -26,6 +39,7 @@ export default function Header({
   onOpenTables,
   onOpenAi,
   onOpenProfile,
+  onOpenLeaderboard,
 }: HeaderProps) {
   return (
     <header className="w-full bg-white/90 backdrop-blur-md border-b border-purple-200/70 sticky top-0 z-30 shadow-xs">
@@ -80,6 +94,16 @@ export default function Header({
           <button
             onClick={() => {
               sounds.playPop();
+              if (onOpenLeaderboard) onOpenLeaderboard();
+            }}
+            className="px-2.5 sm:px-3 py-1.5 rounded-full text-[13px] sm:text-[14px] font-bold text-[#4B5563] hover:text-[#1F2937] hover:bg-white/70 transition-colors flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap"
+          >
+            <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+            <span>Best Player</span>
+          </button>
+          <button
+            onClick={() => {
+              sounds.playPop();
               if (onOpenAi) onOpenAi();
             }}
             className="px-2.5 sm:px-3 py-1.5 rounded-full text-[13px] sm:text-[14px] font-bold text-[#4B5563] hover:text-[#1F2937] hover:bg-white/70 transition-colors flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap"
@@ -99,7 +123,7 @@ export default function Header({
           </button>
         </nav>
 
-        {/* Sisi Kanan: Status Gamifikasi 1 Baris Sejajar & Tombol Profil */}
+        {/* Sisi Kanan: Status Gamifikasi Sejajar & Tombol Akses Cepat */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Lencana Streak */}
           <button
@@ -135,6 +159,19 @@ export default function Header({
             <span className="font-black text-[12px] sm:text-[14px] text-[#1F2937] whitespace-nowrap">
               {stars}
             </span>
+          </button>
+
+          {/* Tombol Cepat Papan Juara Best Player (Top 10) */}
+          <button
+            onClick={() => {
+              sounds.playPop();
+              if (onOpenLeaderboard) onOpenLeaderboard();
+            }}
+            className="w-9 h-9 min-h-[36px] min-w-[36px] sm:w-11 sm:h-11 sm:min-h-[44px] sm:min-w-[44px] rounded-full bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-600 shadow-sm hover:scale-95 active:scale-95 transition-all cursor-pointer border border-amber-300 flex-shrink-0"
+            aria-label="Buka menu Best Player Top 10"
+            title="Papan Juara Best Player (Top 10)"
+          >
+            <Crown className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-400 text-amber-600" />
           </button>
 
           {/* Sakelar Suara */}

@@ -10,8 +10,9 @@ import QuizModal from "@/components/QuizModal";
 import TablesModal from "@/components/TablesModal";
 import AiHelperModal from "@/components/AiHelperModal";
 import RewardsModal from "@/components/RewardsModal";
+import LeaderboardModal from "@/components/LeaderboardModal";
 import { sounds } from "@/components/AudioEffects";
-import { Sparkles, Trophy, Flame, Heart, Lightbulb, CheckCircle, ArrowRight } from "lucide-react";
+import { Trophy, Flame, Lightbulb, CheckCircle, ArrowRight, Crown, Zap } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export default function HomeDashboard() {
@@ -43,6 +44,7 @@ export default function HomeDashboard() {
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
 
   const handleToggleMute = () => {
     const nextMuted = !isMuted;
@@ -73,6 +75,8 @@ export default function HomeDashboard() {
       // Kembali ke beranda
     } else if (tab === "quiz") {
       setIsQuizOpen(true);
+    } else if (tab === "leaderboard") {
+      setIsLeaderboardOpen(true);
     } else if (tab === "rewards") {
       setIsRewardsOpen(true);
     } else if (tab === "profile") {
@@ -114,6 +118,7 @@ export default function HomeDashboard() {
         onOpenTables={() => setIsTablesOpen(true)}
         onOpenAi={() => setIsAiOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
       />
 
       {/* 2. Konten Utama Dashboard Website */}
@@ -134,7 +139,7 @@ export default function HomeDashboard() {
           onOpenChallenge={() => setIsQuizOpen(true)}
         />
 
-        {/* 3. Fitur Tambahan Tampilan Website: Progres & Tips Matematika */}
+        {/* 3. Fitur Tambahan Tampilan Website: Progres, Tips, & Widget Best Player */}
         <section aria-label="Aktivitas Belajar & Tips Cepat" className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           {/* Widget 1: Kalender Streak Mingguan */}
           <div className="clay-card-surface p-4 sm:p-5 flex flex-col justify-between">
@@ -220,42 +225,66 @@ export default function HomeDashboard() {
             </button>
           </div>
 
-          {/* Widget 3: Info Bank Soal & Tantangan */}
-          <div className="clay-card-surface p-4 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-white to-purple-50/40">
+          {/* Widget 3: Papan Juara Best Player (Top 10 Tercepat) */}
+          <div className="clay-card-surface p-4 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-amber-50/50 via-white to-purple-50/40 border-2 border-amber-200/70">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-                  <Trophy className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-amber-950 shadow-xs flex-shrink-0">
+                    <Crown className="w-4.5 h-4.5 sm:w-5 sm:h-5 fill-amber-300 text-amber-900" />
+                  </div>
+                  <div>
+                    <h3 className="text-[16px] sm:text-[17px] font-black text-[#1F2937]">Best Player</h3>
+                    <p className="text-[12px] sm:text-[13px] font-semibold text-[#6B7280]">Pemain Tercepat 10 Soal</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-[16px] sm:text-[17px] font-black text-[#1F2937]">Bank 100 Soal</h3>
-                  <p className="text-[13px] sm:text-[14px] font-semibold text-[#6B7280]">Kurikulum Matematika SD</p>
-                </div>
+                <span className="text-[11px] sm:text-[12px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                  Top 10 🏆
+                </span>
               </div>
 
-              <div className="space-y-1 sm:space-y-1.5 mt-2">
-                <div className="flex items-center justify-between text-[13px] sm:text-[14px] font-bold">
-                  <span className="text-[#6B7280]">Soal Perkalian & Pembagian:</span>
-                  <span className="text-[#1F2937]">40 Soal</span>
+              {/* Snapshot Top 3 */}
+              <div className="bg-white/90 p-2 sm:p-2.5 rounded-xl border border-purple-100 shadow-2xs mt-1.5 space-y-1">
+                <div className="flex items-center justify-between text-[12px] sm:text-[13px] font-black text-amber-950">
+                  <span className="truncate max-w-[140px]">🥇 #1 Rania Archi</span>
+                  <span className="font-mono text-purple-700 font-extrabold bg-purple-50 px-2 py-0.2 rounded-full border border-purple-200 text-[11px]">
+                    00:38
+                  </span>
                 </div>
-                <div className="flex items-center justify-between text-[13px] sm:text-[14px] font-bold">
-                  <span className="text-[#6B7280]">Pecahan & Desimal:</span>
-                  <span className="text-[#1F2937]">15 Soal</span>
+                <div className="flex items-center justify-between text-[11px] sm:text-[12px] font-bold text-gray-600">
+                  <span className="truncate max-w-[140px]">🥈 #2 Farhan Pratama</span>
+                  <span className="font-mono text-gray-700">00:45</span>
                 </div>
-                <div className="flex items-center justify-between text-[13px] sm:text-[14px] font-bold">
-                  <span className="text-[#6B7280]">Geometri, Waktu & Cerita:</span>
-                  <span className="text-[#1F2937]">45 Soal</span>
+                <div className="flex items-center justify-between text-[11px] sm:text-[12px] font-bold text-gray-600">
+                  <span className="truncate max-w-[140px]">🥉 #3 Siti Nurhaliza</span>
+                  <span className="font-mono text-gray-700">00:52</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsQuizOpen(true)}
-              className="clay-button-primary w-full py-2.5 sm:py-3 px-4 font-black text-[14px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm mt-3 active:scale-95 transition-transform"
-            >
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-              <span>Mulai 10 Soal Acak</span>
-            </button>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setIsLeaderboardOpen(true);
+                }}
+                className="clay-button-primary flex-1 py-2 sm:py-2.5 px-3 font-black text-[13px] sm:text-[14px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-transform"
+              >
+                <Trophy className="w-3.5 h-3.5 text-yellow-300" />
+                <span>Lihat Top 10</span>
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playPop();
+                  setIsQuizOpen(true);
+                }}
+                className="px-3 py-2 sm:py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-black text-[13px] sm:text-[14px] flex items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-300 active:scale-95"
+                title="Tantang rekor tercepat sekarang"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-600" />
+                <span>Mulai</span>
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -274,8 +303,23 @@ export default function HomeDashboard() {
           onQuestionCompleted={handleQuestionCompleted}
           studentName={studentName}
           onUpdateStudentName={handleUpdateStudentName}
+          onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         />
       )}
+
+      {/* Modal Papan Juara Best Player (Top 10) */}
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => {
+          setIsLeaderboardOpen(false);
+          setActiveTab("home");
+        }}
+        onStartQuiz={() => {
+          setIsLeaderboardOpen(false);
+          setIsQuizOpen(true);
+        }}
+        currentStudentName={studentName}
+      />
 
       <TablesModal
         isOpen={isTablesOpen}
@@ -359,12 +403,18 @@ export default function HomeDashboard() {
               </div>
             </div>
 
-            <div className="w-full p-3.5 rounded-[18px] bg-emerald-50 border border-emerald-100 text-left flex items-center gap-3 mb-4">
-              <Heart className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <span className="text-[13px] font-bold text-emerald-800 leading-snug">
-                Luar biasa, {studentName}! Kamu telah menyelesaikan 14 soal kuis matematika minggu ini!
-              </span>
-            </div>
+            {/* Tombol Lihat Papan Juara dari Profil */}
+            <button
+              onClick={() => {
+                sounds.playPop();
+                setIsProfileOpen(false);
+                setIsLeaderboardOpen(true);
+              }}
+              className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-[14px] flex items-center justify-center gap-2 mb-3 cursor-pointer transition-colors"
+            >
+              <Crown className="w-4 h-4 text-amber-600 fill-amber-400" />
+              <span>Lihat Catatan Papan Juara Best Player</span>
+            </button>
 
             <button
               onClick={() => {

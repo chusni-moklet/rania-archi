@@ -1,3 +1,5 @@
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
 export interface QuestionOption {
   id: string;
   label: string;
@@ -1226,15 +1228,148 @@ export const QUESTION_BANK: Question[] = [
   },
 ];
 
+const CUSTOM_QUESTIONS_KEY = "raniaarchi_custom_questions";
+
+/** Mengambil soal tambahan dari localStorage */
+export function getCustomQuestions(): Question[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_QUESTIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Mengambil seluruh soal (100 Soal Bawaan + Soal Tambahan Admin) */
+export function getAllQuestions(): Question[] {
+  const custom = getCustomQuestions();
+  return [...QUESTION_BANK, ...custom];
+}
+
+/** Ambil soal tambahan dari Supabase (jika aktif) atau localStorage */
+export async function fetchCustomQuestions(): Promise<Question[]> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("questions")
+        .select("id, question, subtext, options, explanation")
+        .order("id", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        const mapped: Question[] = data.map((item) => ({
+          id: Number(item.id),
+          question: item.question,
+          subtext: item.subtext,
+          options: item.options,
+          explanation: item.explanation,
+        }));
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(CUSTOM_QUESTIONS_KEY, JSON.stringify(mapped));
+          } catch {
+            // Ignore
+          }
+        }
+        return mapped;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  return getCustomQuestions();
+}
+
+/** Menambahkan soal baru oleh Admin */
+export async function addCustomQuestion(params: {
+  question: string;
+  subtext: string;
+  options: QuestionOption[];
+  explanation: string;
+}): Promise<Question> {
+  const currentCustom = getCustomQuestions();
+  const nextId = 100 + currentCustom.length + 1;
+
+  const newQuestion: Question = {
+    id: nextId,
+    question: params.question.trim(),
+    subtext: params.subtext.trim() || "Soal Tambahan Guru",
+    options: params.options,
+    explanation: params.explanation.trim() || "Jawaban tepat! Hebat sekali! 🌟",
+  };
+
+  // Simpan ke Supabase jika aktif
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("questions")
+        .insert({
+          question: newQuestion.question,
+          subtext: newQuestion.subtext,
+          options: newQuestion.options,
+          explanation: newQuestion.explanation,
+        })
+        .select()
+        .single();
+
+      if (!error && data) {
+        newQuestion.id = Number(data.id);
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  // Simpan ke localStorage
+  if (typeof window !== "undefined") {
+    try {
+      const updated = [...currentCustom, newQuestion];
+      localStorage.setItem(CUSTOM_QUESTIONS_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+  }
+
+  return newQuestion;
+}
+
+/** Menghapus soal tambahan */
+export async function deleteCustomQuestion(id: number): Promise<boolean> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      await supabase.from("questions").delete().eq("id", id);
+    } catch {
+      // Fallback
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const current = getCustomQuestions();
+      const updated = current.filter((q) => q.id !== id);
+      localStorage.setItem(CUSTOM_QUESTIONS_KEY, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Pengacakan Fisher-Yates untuk memilih tepat `count` soal unik
- * dari bank 100 soal.
+ * dari bank soal (100 soal bawaan + soal tambahan dari guru).
  */
 export function getRandomQuizQuestions(count: number = 10): Question[] {
-  const shuffled = [...QUESTION_BANK];
+  const pool = getAllQuestions();
+  const shuffled = [...pool];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, count);
+  return shuffled.slice(0, Math.min(count, shuffled.length));
 }

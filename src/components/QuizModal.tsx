@@ -19,6 +19,7 @@ import confetti from "canvas-confetti";
 import { sounds } from "./AudioEffects";
 import { Question, getRandomQuizQuestions, QUESTION_BANK } from "@/data/questionBank";
 import { formatTime, recordQuizCompletion } from "@/data/leaderboard";
+import { getLocalStudents } from "@/data/students";
 
 interface QuizModalProps {
   isOpen: boolean;
@@ -274,6 +275,28 @@ export default function QuizModal({
                   required
                   className="w-full px-4 py-3 rounded-2xl bg-purple-50/70 border-2 border-purple-200 text-[#1F2937] text-[16px] font-black placeholder:text-gray-400 placeholder:font-semibold focus:outline-none focus:border-[#8B5CF6] focus:bg-white shadow-inner transition-all"
                 />
+
+                {/* Pilihan Cepat Nama Siswa Terdaftar */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span className="text-[11px] font-bold text-gray-400">Pilih cepat:</span>
+                  {getLocalStudents().slice(0, 5).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        sounds.playPop();
+                        setNameInput(s.name);
+                      }}
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
+                        nameInput === s.name
+                          ? "bg-[#8B5CF6] text-white border-[#7C3AED]"
+                          : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Info Timer & Leaderboard */}

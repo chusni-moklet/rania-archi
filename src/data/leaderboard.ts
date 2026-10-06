@@ -274,8 +274,50 @@ export async function recordQuizCompletion(params: {
   return { rank, leaderboard: top10 };
 }
 
-/** Reset data ke default benchmark */
+/** Menghapus satu entri di leaderboard */
+export async function deleteLeaderboardEntry(id: string): Promise<boolean> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      await supabase.from("leaderboard").delete().eq("id", id);
+    } catch {
+      // Fallback
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const current = getLocalLeaderboard();
+      const updated = current.filter((e) => e.id !== id);
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Reset data ke default benchmark (Supabase Cloud + LocalStorage) */
 export async function resetLeaderboard(): Promise<LeaderboardEntry[]> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      // Hapus semua data di tabel leaderboard Supabase
+      await supabase.from("leaderboard").delete().neq("name", "___DUMMY_NEQ___");
+
+      // Masukkan kembali 10 data tolak ukur standar
+      const seedData = DEFAULT_LEADERBOARD.map((item) => ({
+        name: item.name,
+        time_seconds: item.timeSeconds,
+        score: item.score,
+        total_questions: item.totalQuestions,
+        badge: item.badge || null,
+      }));
+      await supabase.from("leaderboard").insert(seedData);
+    } catch (err) {
+      console.error("Gagal mereset leaderboard Supabase:", err);
+    }
+  }
+
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(DEFAULT_LEADERBOARD));

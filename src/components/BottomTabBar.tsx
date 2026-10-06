@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Home, Zap, Trophy, User, Sparkles, Crown } from "lucide-react";
 import { sounds } from "./AudioEffects";
 
@@ -115,6 +116,14 @@ export default function BottomTabBar({
             >
               Profil Siswa
             </button>
+            <span>•</span>
+            <Link
+              href="/admin"
+              className="hover:text-[#8B5CF6] text-purple-400 font-medium transition-colors"
+              title="Portal Guru & Administrator"
+            >
+              Portal Guru 🔐
+            </Link>
           </div>
 
           <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#8B5CF6] bg-purple-50 px-3 py-1.5 rounded-full border border-purple-200">

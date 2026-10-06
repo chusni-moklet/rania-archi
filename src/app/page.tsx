@@ -12,7 +12,8 @@ import AiHelperModal from "@/components/AiHelperModal";
 import RewardsModal from "@/components/RewardsModal";
 import LeaderboardModal from "@/components/LeaderboardModal";
 import { sounds } from "@/components/AudioEffects";
-import { Trophy, Flame, Lightbulb, CheckCircle, ArrowRight, Crown, Zap } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Flame, Lightbulb, CheckCircle, ArrowRight, Crown, Zap, Lock } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export default function HomeDashboard() {
@@ -426,6 +427,15 @@ export default function HomeDashboard() {
             >
               Simpan & Kembali ke Beranda
             </button>
+
+            <Link
+              href="/admin"
+              onClick={() => setIsProfileOpen(false)}
+              className="mt-3 text-[12px] font-bold text-purple-400 hover:text-purple-600 flex items-center justify-center gap-1 transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Portal Guru & Admin 🔐</span>
+            </Link>
           </div>
         </div>
       )}

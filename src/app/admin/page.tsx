@@ -23,6 +23,8 @@ import {
   Globe2,
   Database,
   Zap,
+  RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import {
   verifyAdminCredentials,
@@ -34,6 +36,8 @@ import {
 import {
   LeaderboardEntry,
   fetchLeaderboard,
+  clearLeaderboard,
+  resetToBenchmark,
   resetLeaderboard,
   deleteLeaderboardEntry,
   formatTime,
@@ -157,12 +161,12 @@ export default function AdminPortalPage() {
   };
 
   // =========================================================================
-  // ACTIONS TAB 1: RESET & KELOLA LEADERBOARD
+  // ACTIONS TAB 1: KOSONGKAN & KELOLA LEADERBOARD
   // =========================================================================
-  const handleResetLeaderboard = async () => {
+  const handleClearLeaderboard = async () => {
     if (
       !confirm(
-        "Apakah Anda yakin ingin MERESET seluruh Papan Juara Best Player ke tolak ukur standar? Data skor custom akan dihapus."
+        "Apakah Anda yakin ingin MENGHAPUS SEMUA data rekor di Papan Juara? Papan Juara akan benar-benar KOSONG (0 data)."
       )
     ) {
       return;
@@ -171,12 +175,35 @@ export default function AdminPortalPage() {
     setIsResettingLeaderboard(true);
     sounds.playPop();
     try {
-      const resetData = await resetLeaderboard();
-      setLeaderboard(resetData);
-      setLeaderboardMessage("Papan Juara berhasil direset ke standar benchmark! 🏆");
+      const cleared = await clearLeaderboard();
+      setLeaderboard(cleared);
+      setLeaderboardMessage("Papan Juara berhasil dikosongkan seluruhnya! (0 data tersisa) 🗑️");
       setTimeout(() => setLeaderboardMessage(""), 4000);
     } catch {
-      setLeaderboardMessage("Gagal mereset papan juara. Silakan coba lagi.");
+      setLeaderboardMessage("Gagal mengosongkan papan juara. Silakan coba lagi.");
+    } finally {
+      setIsResettingLeaderboard(false);
+    }
+  };
+
+  const handleRestoreBenchmark = async () => {
+    if (
+      !confirm(
+        "Ingin mengisi ulang 10 data simulasi tolak ukur (Rania Archi, dkk) ke papan juara untuk latihan?"
+      )
+    ) {
+      return;
+    }
+
+    setIsResettingLeaderboard(true);
+    sounds.playPop();
+    try {
+      const benchmarkData = await resetToBenchmark();
+      setLeaderboard(benchmarkData);
+      setLeaderboardMessage("Data contoh benchmark (10 pemain) berhasil diisi kembali! 🏆");
+      setTimeout(() => setLeaderboardMessage(""), 4000);
+    } catch {
+      setLeaderboardMessage("Gagal mengisi ulang data contoh. Silakan coba lagi.");
     } finally {
       setIsResettingLeaderboard(false);
     }
@@ -188,6 +215,8 @@ export default function AdminPortalPage() {
     await deleteLeaderboardEntry(id);
     const updated = leaderboard.filter((item) => item.id !== id);
     setLeaderboard(updated);
+    setLeaderboardMessage(`Rekor "${name}" berhasil dihapus.`);
+    setTimeout(() => setLeaderboardMessage(""), 3000);
   };
 
   // =========================================================================
@@ -490,25 +519,25 @@ export default function AdminPortalPage() {
               </div>
             )}
 
-            {/* Header Tindakan Reset */}
-            <div className="clay-card-surface p-5 flex flex-col sm:flex-row items-center justify-between gap-4 border-2 border-purple-200">
+            {/* Header Tindakan Reset & Kosongkan */}
+            <div className="clay-card-surface p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-2 border-purple-200">
               <div>
                 <h2 className="text-[18px] sm:text-[20px] font-black text-[#1F2937] flex items-center gap-2">
                   <Crown className="w-5 h-5 text-amber-500 fill-amber-400" />
                   <span>Manajemen Rekor Papan Juara Best Player</span>
                 </h2>
                 <p className="text-[13px] sm:text-[14px] font-semibold text-[#6B7280] mt-0.5">
-                  Admin dapat menghapus rekor siswa individual atau mereset seluruh leaderboard ke standar latihan.
+                  Hapus rekor individual siswa, kosongkan seluruh papan juara untuk kuis baru, atau isi ulang data contoh.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                 <button
                   onClick={() => {
                     sounds.playPop();
                     loadAllAdminData();
                   }}
-                  className="px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#8B5CF6] font-bold text-[13px] flex items-center justify-center gap-1.5 border border-purple-200 cursor-pointer transition-colors"
+                  className="px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#8B5CF6] font-bold text-[13px] flex items-center justify-center gap-1.5 border border-purple-200 cursor-pointer transition-colors"
                   title="Segarkan data terbaru"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -516,21 +545,39 @@ export default function AdminPortalPage() {
                 </button>
 
                 <button
-                  onClick={handleResetLeaderboard}
+                  onClick={handleRestoreBenchmark}
                   disabled={isResettingLeaderboard}
-                  className="clay-button-primary bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 py-2.5 px-4 font-black text-[14px] flex items-center justify-center gap-1.5 cursor-pointer shadow-md text-white border-red-400 active:scale-95 transition-transform"
+                  className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[13px] flex items-center justify-center gap-1.5 border border-amber-300 cursor-pointer transition-colors disabled:opacity-50"
+                  title="Isi ulang 10 rekor pemain contoh untuk simulasi/latihan"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                  <span>Isi Ulang Data Contoh</span>
+                </button>
+
+                <button
+                  onClick={handleClearLeaderboard}
+                  disabled={isResettingLeaderboard}
+                  className="clay-button-primary bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 py-2 px-3.5 font-black text-[13px] flex items-center justify-center gap-1.5 cursor-pointer shadow-md text-white border-red-400 active:scale-95 transition-transform disabled:opacity-50"
+                  title="Hapus semua data rekor di papan juara hingga kosong"
                 >
                   <Trash2 className="w-4 h-4 text-white" />
-                  <span>{isResettingLeaderboard ? "Mereset..." : "Reset Leaderboard"}</span>
+                  <span>{isResettingLeaderboard ? "Memproses..." : "Kosongkan Papan Juara"}</span>
                 </button>
               </div>
             </div>
 
             {/* Tabel / Daftar Pemain Terdaftar */}
             <div className="clay-card-surface p-5 overflow-hidden">
-              <h3 className="text-[16px] font-black text-[#1F2937] mb-3">
-                Daftar Peringkat Saat Ini ({leaderboard.length} Rekor):
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[16px] font-black text-[#1F2937]">
+                  Daftar Peringkat Saat Ini ({leaderboard.length} Rekor):
+                </h3>
+                {leaderboard.length === 0 && (
+                  <span className="text-[12px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    Papan Juara Kosong (0 data)
+                  </span>
+                )}
+              </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -546,60 +593,78 @@ export default function AdminPortalPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-purple-100 text-[14px] font-bold text-[#1F2937]">
-                    {leaderboard.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-purple-50/50 transition-colors">
-                        <td className="py-3 px-3">
-                          <span
-                            className={`w-7 h-7 rounded-full font-black text-[12px] flex items-center justify-center ${
-                              idx === 0
-                                ? "bg-amber-100 text-amber-800 border border-amber-300"
-                                : idx === 1
-                                ? "bg-slate-200 text-slate-700"
-                                : idx === 2
-                                ? "bg-amber-50 text-amber-900 border border-amber-200"
-                                : "bg-purple-50 text-purple-700"
-                            }`}
-                          >
-                            #{idx + 1}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-black text-[#1F2937]">
-                          {item.name}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="font-mono text-blue-600 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[12px] inline-flex items-center gap-1">
-                            <Timer className="w-3 h-3 text-blue-500" />
-                            {formatTime(item.timeSeconds)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="text-emerald-700 font-black">
-                            {item.score}/{item.totalQuestions}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-gray-400 text-[12px]">
-                          {item.date}
-                        </td>
-                        <td className="py-3 px-3">
-                          {item.badge ? (
-                            <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                              {item.badge}
+                    {leaderboard.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 px-4 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl mb-2">
+                              🏆
+                            </div>
+                            <span className="text-[16px] font-black text-[#1F2937]">
+                              Papan Juara Saat Ini Kosong (0 Rekor)
                             </span>
-                          ) : (
-                            <span className="text-gray-300">-</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            onClick={() => handleDeleteLeaderboardItem(item.id, item.name)}
-                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer transition-colors"
-                            title={`Hapus rekor ${item.name}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <p className="text-[13px] font-semibold text-gray-500 mt-1 max-w-md">
+                              Seluruh rekor telah dibersihkan oleh admin. Rekor akan otomatis muncul saat siswa mulai menyelesaikan kuis matematika, atau klik tombol &quot;Isi Ulang Data Contoh&quot; di atas jika ingin menampilkan data simulasi.
+                            </p>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      leaderboard.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-purple-50/50 transition-colors">
+                          <td className="py-3 px-3">
+                            <span
+                              className={`w-7 h-7 rounded-full font-black text-[12px] flex items-center justify-center ${
+                                idx === 0
+                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                  : idx === 1
+                                  ? "bg-slate-200 text-slate-700"
+                                  : idx === 2
+                                  ? "bg-amber-50 text-amber-900 border border-amber-200"
+                                  : "bg-purple-50 text-purple-700"
+                              }`}
+                            >
+                              #{idx + 1}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-black text-[#1F2937]">
+                            {item.name}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-mono text-blue-600 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[12px] inline-flex items-center gap-1">
+                              <Timer className="w-3 h-3 text-blue-500" />
+                              {formatTime(item.timeSeconds)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-emerald-700 font-black">
+                              {item.score}/{item.totalQuestions}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-gray-400 text-[12px]">
+                            {item.date}
+                          </td>
+                          <td className="py-3 px-3">
+                            {item.badge ? (
+                              <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                {item.badge}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              onClick={() => handleDeleteLeaderboardItem(item.id, item.name)}
+                              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer transition-colors"
+                              title={`Hapus rekor ${item.name}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

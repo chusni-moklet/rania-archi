@@ -132,31 +132,36 @@ export function isOnlineMode(): boolean {
   return isSupabaseConfigured();
 }
 
-/** Mengambil data dari localStorage secara instan (synchronous fallback) */
+/**
+ * Mengambil data dari localStorage secara instan.
+ * PENTING: Jika data kosong ([]) karena telah dihapus admin,
+ * kembalikan [] dan JANGAN timpa kembali dengan DEFAULT_LEADERBOARD!
+ */
 export function getLocalLeaderboard(): LeaderboardEntry[] {
   if (typeof window === "undefined") {
-    return DEFAULT_LEADERBOARD;
+    return [];
   }
   try {
     const raw = localStorage.getItem(LEADERBOARD_KEY);
-    if (!raw) {
-      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(DEFAULT_LEADERBOARD));
-      return DEFAULT_LEADERBOARD;
+    // Jika belum ada data sama sekali atau sudah dikosongkan, kembalikan []
+    if (raw === null) {
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify([]));
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed.slice(0, 10);
     }
-    return DEFAULT_LEADERBOARD;
+    return [];
   } catch {
-    return DEFAULT_LEADERBOARD;
+    return [];
   }
 }
 
 /**
  * Mengambil data Top 10 Best Player.
- * Jika Supabase sudah dikonfigurasi, akan mengambil langsung dari Cloud Database.
- * Jika offline atau belum dikonfigurasi, otomatis menggunakan localStorage.
+ * Jika Supabase aktif, membaca dari Cloud.
+ * Jika data di Cloud kosong (setelah dihapus admin), kembalikan [] kosong.
  */
 export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
   if (supabase && isSupabaseConfigured()) {
@@ -168,7 +173,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
         .order("time_seconds", { ascending: true })
         .limit(10);
 
-      if (!error && data && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const mapped: LeaderboardEntry[] = data.map((row) => ({
           id: String(row.id),
           name: row.name,
@@ -179,7 +184,6 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
           badge: row.badge || undefined,
         }));
 
-        // Simpan cache ke localStorage untuk offline-readiness
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(mapped));
@@ -204,10 +208,6 @@ export function getLeaderboard(): LeaderboardEntry[] {
 
 /**
  * Mencatat hasil kuis siswa ke Leaderboard (Supabase Cloud + LocalStorage).
- * Urutan pemeringkatan:
- * 1. Skor Nilai tertinggi (jumlah jawaban benar)
- * 2. Waktu pengerjaan tercepat (detik terendah)
- * Mengembalikan objek { rank: 1-10 | null, leaderboard: LeaderboardEntry[] }
  */
 export async function recordQuizCompletion(params: {
   name: string;
@@ -229,12 +229,15 @@ export async function recordQuizCompletion(params: {
         badge: badge || null,
       });
 
-      // Ambil 10 teratas terbaru dari Supabase
       const freshLeaderboard = await fetchLeaderboard();
       const rankIdx = freshLeaderboard.findIndex(
         (e) => e.name.toLowerCase() === safeName.toLowerCase() && e.score === params.score
       );
       const onlineRank = rankIdx !== -1 ? rankIdx + 1 : null;
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("raniaarchi_leaderboard_updated"));
+      }
 
       return { rank: onlineRank, leaderboard: freshLeaderboard };
     } catch {
@@ -266,6 +269,7 @@ export async function recordQuizCompletion(params: {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(top10));
+      window.dispatchEvent(new Event("raniaarchi_leaderboard_updated"));
     } catch {
       // Ignore
     }
@@ -274,7 +278,9 @@ export async function recordQuizCompletion(params: {
   return { rank, leaderboard: top10 };
 }
 
-/** Menghapus satu entri di leaderboard */
+/**
+ * Menghapus satu entri di leaderboard.
+ */
 export async function deleteLeaderboardEntry(id: string): Promise<boolean> {
   if (supabase && isSupabaseConfigured()) {
     try {
@@ -289,6 +295,7 @@ export async function deleteLeaderboardEntry(id: string): Promise<boolean> {
       const current = getLocalLeaderboard();
       const updated = current.filter((e) => e.id !== id);
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event("raniaarchi_leaderboard_updated"));
       return true;
     } catch {
       return false;
@@ -297,14 +304,38 @@ export async function deleteLeaderboardEntry(id: string): Promise<boolean> {
   return true;
 }
 
-/** Reset data ke default benchmark (Supabase Cloud + LocalStorage) */
-export async function resetLeaderboard(): Promise<LeaderboardEntry[]> {
+/**
+ * KOSONGKAN SELURUH PAPAN JUARA (HAPUS SEMUA DATA LEADERBOARD).
+ * Benar-benar menghapus semua data hingga menjadi array kosong [].
+ */
+export async function clearLeaderboard(): Promise<LeaderboardEntry[]> {
   if (supabase && isSupabaseConfigured()) {
     try {
-      // Hapus semua data di tabel leaderboard Supabase
       await supabase.from("leaderboard").delete().neq("name", "___DUMMY_NEQ___");
+    } catch (err) {
+      console.error("Gagal mengosongkan leaderboard Supabase:", err);
+    }
+  }
 
-      // Masukkan kembali 10 data tolak ukur standar
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify([]));
+      window.dispatchEvent(new Event("raniaarchi_leaderboard_updated"));
+    } catch {
+      // Ignore
+    }
+  }
+  return [];
+}
+
+/**
+ * ISI ULANG DATA CONTOH (BENCHMARK 10 PEMAIN AWAL).
+ * Digunakan jika guru ingin mengisi kembali data simulasi latihan.
+ */
+export async function resetToBenchmark(): Promise<LeaderboardEntry[]> {
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      await supabase.from("leaderboard").delete().neq("name", "___DUMMY_NEQ___");
       const seedData = DEFAULT_LEADERBOARD.map((item) => ({
         name: item.name,
         time_seconds: item.timeSeconds,
@@ -314,16 +345,20 @@ export async function resetLeaderboard(): Promise<LeaderboardEntry[]> {
       }));
       await supabase.from("leaderboard").insert(seedData);
     } catch (err) {
-      console.error("Gagal mereset leaderboard Supabase:", err);
+      console.error("Gagal restore benchmark Supabase:", err);
     }
   }
 
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(DEFAULT_LEADERBOARD));
+      window.dispatchEvent(new Event("raniaarchi_leaderboard_updated"));
     } catch {
       // Ignore
     }
   }
   return DEFAULT_LEADERBOARD;
 }
+
+/** Alias kompatibilitas */
+export const resetLeaderboard = clearLeaderboard;

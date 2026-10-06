@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WelcomeHeroCard from "@/components/WelcomeHeroCard";
 import LetsLearnGrid, { CardAction } from "@/components/LetsLearnGrid";
@@ -11,6 +11,7 @@ import TablesModal from "@/components/TablesModal";
 import AiHelperModal from "@/components/AiHelperModal";
 import RewardsModal from "@/components/RewardsModal";
 import LeaderboardModal from "@/components/LeaderboardModal";
+import { LeaderboardEntry, getLocalLeaderboard, fetchLeaderboard, formatTime } from "@/data/leaderboard";
 import { sounds } from "@/components/AudioEffects";
 import Link from "next/link";
 import { Trophy, Flame, Lightbulb, CheckCircle, ArrowRight, Crown, Zap, Lock } from "lucide-react";
@@ -23,6 +24,26 @@ export default function HomeDashboard() {
   const [stars, setStars] = useState(140);
   const [challengeProgress, setChallengeProgress] = useState(2);
   const [totalChallenge] = useState(10);
+  const [dashboardLeaderboard, setDashboardLeaderboard] = useState<LeaderboardEntry[]>(() =>
+    typeof window !== "undefined" ? getLocalLeaderboard() : []
+  );
+
+  useEffect(() => {
+    let ignore = false;
+    const updateBoard = () => {
+      fetchLeaderboard().then((data) => {
+        if (!ignore) setDashboardLeaderboard(data);
+      });
+    };
+    updateBoard();
+    window.addEventListener("raniaarchi_leaderboard_updated", updateBoard);
+    window.addEventListener("storage", updateBoard);
+    return () => {
+      ignore = true;
+      window.removeEventListener("raniaarchi_leaderboard_updated", updateBoard);
+      window.removeEventListener("storage", updateBoard);
+    };
+  }, []);
   const [isMuted, setIsMuted] = useState(false);
   const [studentName, setStudentName] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -244,23 +265,26 @@ export default function HomeDashboard() {
                 </span>
               </div>
 
-              {/* Snapshot Top 3 */}
-              <div className="bg-white/90 p-2 sm:p-2.5 rounded-xl border border-purple-100 shadow-2xs mt-1.5 space-y-1">
-                <div className="flex items-center justify-between text-[12px] sm:text-[13px] font-black text-amber-950">
-                  <span className="truncate max-w-[140px]">🥇 #1 Rania Archi</span>
-                  <span className="font-mono text-purple-700 font-extrabold bg-purple-50 px-2 py-0.2 rounded-full border border-purple-200 text-[11px]">
-                    00:38
-                  </span>
+              {/* Snapshot Top 3 (Dinamis Sesuai Data Asli) */}
+              {dashboardLeaderboard.length === 0 ? (
+                <div className="bg-white/90 p-2.5 rounded-xl border border-purple-100 shadow-2xs mt-1.5 text-center">
+                  <p className="text-[12px] font-black text-purple-700">Papan Juara Masih Kosong</p>
+                  <p className="text-[11px] font-semibold text-gray-400 mt-0.5">Jadilah siswa pertama!</p>
                 </div>
-                <div className="flex items-center justify-between text-[11px] sm:text-[12px] font-bold text-gray-600">
-                  <span className="truncate max-w-[140px]">🥈 #2 Farhan Pratama</span>
-                  <span className="font-mono text-gray-700">00:45</span>
+              ) : (
+                <div className="bg-white/90 p-2 sm:p-2.5 rounded-xl border border-purple-100 shadow-2xs mt-1.5 space-y-1">
+                  {dashboardLeaderboard.slice(0, 3).map((item, idx) => (
+                    <div key={item.id} className="flex items-center justify-between text-[11px] sm:text-[12px] font-black text-amber-950">
+                      <span className="truncate max-w-[140px]">
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"} #{idx + 1} {item.name}
+                      </span>
+                      <span className="font-mono text-purple-700 font-extrabold bg-purple-50 px-2 py-0.2 rounded-full border border-purple-200 text-[10px]">
+                        {formatTime(item.timeSeconds)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between text-[11px] sm:text-[12px] font-bold text-gray-600">
-                  <span className="truncate max-w-[140px]">🥉 #3 Siti Nurhaliza</span>
-                  <span className="font-mono text-gray-700">00:52</span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="mt-3 flex items-center gap-2">

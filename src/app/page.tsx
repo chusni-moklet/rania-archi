@@ -24,9 +24,7 @@ export default function HomeDashboard() {
   const [stars, setStars] = useState(140);
   const [challengeProgress, setChallengeProgress] = useState(2);
   const [totalChallenge] = useState(10);
-  const [dashboardLeaderboard, setDashboardLeaderboard] = useState<LeaderboardEntry[]>(() =>
-    typeof window !== "undefined" ? getLocalLeaderboard() : []
-  );
+  const [dashboardLeaderboard, setDashboardLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     let ignore = false;

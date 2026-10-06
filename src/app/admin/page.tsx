@@ -61,10 +61,14 @@ import { sounds } from "@/components/AudioEffects";
 type AdminTab = "leaderboard" | "questions" | "students";
 
 export default function AdminPortalPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    typeof window !== "undefined" ? isAdminSessionActive() : false
-  );
+  const [isMounted, setIsMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("leaderboard");
+
+  useEffect(() => {
+    setIsMounted(true);
+    setIsAuthenticated(isAdminSessionActive());
+  }, []);
 
   // Login Form State
   const [emailInput, setEmailInput] = useState(ADMIN_CREDENTIALS.email);
@@ -306,6 +310,19 @@ export default function AdminPortalPage() {
     await deleteStudent(id);
     setStudents((prev) => prev.filter((s) => s.id !== id));
   };
+
+  // =========================================================================
+  // RENDER: HYDRATION GUARD
+  // =========================================================================
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#F3E8FF] via-purple-100 to-amber-50 flex flex-col justify-center items-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-white border-2 border-purple-200 shadow-md flex items-center justify-center animate-spin">
+          <RefreshCw className="w-6 h-6 text-[#8B5CF6]" />
+        </div>
+      </div>
+    );
+  }
 
   // =========================================================================
   // RENDER: JIKA BELUM LOGIN (LOGIN FORM)

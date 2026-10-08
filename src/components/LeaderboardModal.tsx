@@ -53,11 +53,18 @@ export default function LeaderboardModal({
   useEffect(() => {
     let ignore = false;
     const updateData = () => {
-      fetchLeaderboard().then((data) => {
-        if (!ignore) {
-          setLeaderboard(data);
-        }
-      });
+      setIsLoading(true);
+      fetchLeaderboard()
+        .then((data) => {
+          if (!ignore) {
+            setLeaderboard(data);
+          }
+        })
+        .finally(() => {
+          if (!ignore) {
+            setIsLoading(false);
+          }
+        });
     };
 
     if (isOpen) {
@@ -102,17 +109,21 @@ export default function LeaderboardModal({
                 <span>Papan Juara Tercepat</span>
                 <Crown className="w-4 h-4 text-yellow-300 fill-yellow-300 inline" />
               </h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[12px] text-purple-200 font-bold">
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <span className="text-[12px] text-purple-200 font-bold whitespace-nowrap">
                   Top 10 Pemain Tercepat 10 Soal
                 </span>
                 {online ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-200 bg-emerald-950/40 px-2 py-0.2 rounded-full border border-emerald-400/30">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black text-emerald-300 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-400/40 shadow-xs whitespace-nowrap flex-shrink-0">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                    </span>
                     <Globe2 className="w-3 h-3 text-emerald-400" />
-                    <span>Supabase Cloud</span>
+                    <span>Title Race</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-200 bg-yellow-950/40 px-2 py-0.2 rounded-full border border-yellow-400/30">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-200 bg-yellow-950/40 px-2 py-0.2 rounded-full border border-yellow-400/30 whitespace-nowrap flex-shrink-0">
                     <Database className="w-3 h-3 text-yellow-400" />
                     <span>Mode Lokal</span>
                   </span>
@@ -162,7 +173,7 @@ export default function LeaderboardModal({
                   handleRefresh();
                 }}
                 disabled={isLoading}
-                title="Segarkan data peringkat"
+                title="Segarkan data peringkat dari cloud database"
                 className="text-[12px] font-extrabold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer bg-white px-2.5 py-1 rounded-full border border-purple-200 shadow-2xs hover:bg-purple-50 disabled:opacity-50"
               >
                 <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin text-purple-600" : ""}`} />
@@ -171,8 +182,16 @@ export default function LeaderboardModal({
             </div>
           </div>
 
-          {/* JIKA PAPAN JUARA KOSONG (SETELAH DIHAPUS ADMIN) */}
-          {leaderboard.length === 0 ? (
+          {/* LOADING SKELETON / INDIKATOR */}
+          {isLoading && leaderboard.length === 0 ? (
+            <div className="py-12 px-5 flex flex-col items-center text-center bg-purple-50/50 rounded-2xl border-2 border-dashed border-purple-200 my-2">
+              <RefreshCw className="w-8 h-8 text-purple-600 animate-spin mb-3" />
+              <h3 className="text-[17px] font-black text-[#1F2937]">Menghubungkan ke Papan Juara Online...</h3>
+              <p className="text-[12px] font-semibold text-[#6B7280] mt-1">
+                Mengambil data pemain tercepat langsung dari Cloud Database...
+              </p>
+            </div>
+          ) : leaderboard.length === 0 ? (
             <div className="py-10 px-5 flex flex-col items-center text-center bg-purple-50/50 rounded-2xl border-2 border-dashed border-purple-200 my-2">
               <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center text-3xl mb-3 shadow-inner">
                 🏆
@@ -188,13 +207,24 @@ export default function LeaderboardModal({
               <div className="grid grid-cols-3 gap-2 sm:gap-2.5 items-end pt-3 pb-1">
                 {/* Rank 2 (Perak) */}
                 {top2 ? (
-                  <div className="flex flex-col items-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 border-2 border-slate-200 text-center shadow-xs">
+                  <div className={`flex flex-col items-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 border-2 text-center shadow-xs transition-all ${
+                    currentStudentName &&
+                    top2.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim()
+                      ? "border-purple-400 bg-purple-50/90 ring-2 ring-purple-300 shadow-sm"
+                      : "border-slate-200"
+                  }`}>
                     <div className="w-7 h-7 rounded-full bg-slate-300 text-slate-700 font-black text-[13px] flex items-center justify-center shadow-inner mb-1.5">
                       🥈
                     </div>
                     <span className="text-[13px] sm:text-[14px] font-black text-[#1F2937] truncate w-full">
                       {top2.name}
                     </span>
+                    {currentStudentName &&
+                      top2.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim() && (
+                        <span className="text-[9px] font-black bg-[#8B5CF6] text-white px-1.5 py-0.2 rounded-full my-0.5">
+                          Kamu
+                        </span>
+                    )}
                     <span className="text-[11px] font-black text-[#8B5CF6] mt-0.5 flex items-center gap-0.5">
                       <Timer className="w-3 h-3 text-amber-500" />
                       {formatTime(top2.timeSeconds)}
@@ -212,7 +242,12 @@ export default function LeaderboardModal({
 
                 {/* Rank 1 (Emas - Menonjol) */}
                 {top1 ? (
-                  <div className="flex flex-col items-center p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-amber-50 to-yellow-50/70 border-3 border-amber-300 text-center shadow-md relative -translate-y-2">
+                  <div className={`flex flex-col items-center p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-amber-50 to-yellow-50/70 border-3 text-center shadow-md relative -translate-y-2 transition-all ${
+                    currentStudentName &&
+                    top1.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim()
+                      ? "border-amber-400 ring-2 ring-purple-400"
+                      : "border-amber-300"
+                  }`}>
                     <div className="absolute -top-3 w-6 h-6 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-sm">
                       <Crown className="w-3.5 h-3.5 fill-white" />
                     </div>
@@ -222,6 +257,12 @@ export default function LeaderboardModal({
                     <span className="text-[14px] sm:text-[15px] font-black text-[#1F2937] truncate w-full">
                       {top1.name}
                     </span>
+                    {currentStudentName &&
+                      top1.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim() && (
+                        <span className="text-[9px] font-black bg-[#8B5CF6] text-white px-2 py-0.2 rounded-full my-0.5">
+                          Kamu
+                        </span>
+                    )}
                     <span className="text-[12px] font-black text-[#8B5CF6] mt-0.5 flex items-center gap-0.5">
                       <Timer className="w-3.5 h-3.5 text-amber-600" />
                       {formatTime(top1.timeSeconds)}
@@ -234,13 +275,24 @@ export default function LeaderboardModal({
 
                 {/* Rank 3 (Perunggu) */}
                 {top3 ? (
-                  <div className="flex flex-col items-center p-2.5 sm:p-3 rounded-2xl bg-amber-50/50 border-2 border-amber-200 text-center shadow-xs">
+                  <div className={`flex flex-col items-center p-2.5 sm:p-3 rounded-2xl bg-amber-50/50 border-2 text-center shadow-xs transition-all ${
+                    currentStudentName &&
+                    top3.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim()
+                      ? "border-purple-400 bg-purple-50/90 ring-2 ring-purple-300 shadow-sm"
+                      : "border-amber-200"
+                  }`}>
                     <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-800 font-black text-[13px] flex items-center justify-center shadow-inner mb-1.5">
                       🥉
                     </div>
                     <span className="text-[13px] sm:text-[14px] font-black text-[#1F2937] truncate w-full">
                       {top3.name}
                     </span>
+                    {currentStudentName &&
+                      top3.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim() && (
+                        <span className="text-[9px] font-black bg-[#8B5CF6] text-white px-1.5 py-0.2 rounded-full my-0.5">
+                          Kamu
+                        </span>
+                    )}
                     <span className="text-[11px] font-black text-[#8B5CF6] mt-0.5 flex items-center gap-0.5">
                       <Timer className="w-3.5 h-3.5 text-amber-500" />
                       {formatTime(top3.timeSeconds)}

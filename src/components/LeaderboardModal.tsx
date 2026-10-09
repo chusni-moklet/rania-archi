@@ -111,7 +111,7 @@ export default function LeaderboardModal({
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 <span className="text-[12px] text-purple-200 font-bold whitespace-nowrap">
-                  Top 10 Pemain Tercepat 10 Soal
+                  Top 10 Pemain • Skor, Kesalahan & Waktu
                 </span>
                 {online ? (
                   <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black text-emerald-300 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-400/40 shadow-xs whitespace-nowrap flex-shrink-0">
@@ -153,11 +153,11 @@ export default function LeaderboardModal({
               </div>
               <div>
                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-                  Rekor Tercepat Saat Ini
+                  Rekor Juara Saat Ini
                 </span>
                 {top1 ? (
                   <span className="text-[14px] sm:text-[15px] font-black text-[#8B5CF6]">
-                    {top1.name} ({formatTime(top1.timeSeconds)})
+                    {top1.name} ({formatTime(top1.timeSeconds)} • {top1.wrongCount ?? 0} Salah)
                   </span>
                 ) : (
                   <span className="text-[13px] font-bold text-gray-400">
@@ -229,9 +229,18 @@ export default function LeaderboardModal({
                       <Timer className="w-3 h-3 text-amber-500" />
                       {formatTime(top2.timeSeconds)}
                     </span>
-                    <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full mt-1">
-                      {Math.round((top2.score / top2.totalQuestions) * 100)} Nilai
-                    </span>
+                    <div className="flex flex-col gap-0.5 mt-1 w-full">
+                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                        {top2.score}/{top2.totalQuestions} Benar
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                        (top2.wrongCount ?? 0) === 0
+                          ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                          : "text-amber-800 bg-amber-50 border border-amber-200"
+                      }`}>
+                        {(top2.wrongCount ?? 0) === 0 ? "0 Salah ✨" : `${top2.wrongCount} Salah`}
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center p-2.5 rounded-2xl bg-slate-50/40 border border-dashed border-slate-200 text-center opacity-60">
@@ -267,7 +276,19 @@ export default function LeaderboardModal({
                       <Timer className="w-3.5 h-3.5 text-amber-600" />
                       {formatTime(top1.timeSeconds)}
                     </span>
-                    <span className="text-[11px] font-black text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full mt-1">
+                    <div className="flex flex-col gap-0.5 mt-1 w-full">
+                      <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                        {top1.score}/{top1.totalQuestions} Benar
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                        (top1.wrongCount ?? 0) === 0
+                          ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                          : "text-amber-800 bg-amber-50 border border-amber-200"
+                      }`}>
+                        {(top1.wrongCount ?? 0) === 0 ? "0 Salah ✨" : `${top1.wrongCount} Salah`}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-black text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full mt-1 truncate max-w-full">
                       {top1.badge || "Juara 1 👑"}
                     </span>
                   </div>
@@ -297,9 +318,18 @@ export default function LeaderboardModal({
                       <Timer className="w-3.5 h-3.5 text-amber-500" />
                       {formatTime(top3.timeSeconds)}
                     </span>
-                    <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full mt-1">
-                      {Math.round((top3.score / top3.totalQuestions) * 100)} Nilai
-                    </span>
+                    <div className="flex flex-col gap-0.5 mt-1 w-full">
+                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                        {top3.score}/{top3.totalQuestions} Benar
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                        (top3.wrongCount ?? 0) === 0
+                          ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                          : "text-amber-800 bg-amber-50 border border-amber-200"
+                      }`}>
+                        {(top3.wrongCount ?? 0) === 0 ? "0 Salah ✨" : `${top3.wrongCount} Salah`}
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center p-2.5 rounded-2xl bg-amber-50/30 border border-dashed border-amber-200 text-center opacity-60">
@@ -312,9 +342,14 @@ export default function LeaderboardModal({
               {/* Daftar Peringkat 4 - 10 */}
               {rest.length > 0 && (
                 <div className="space-y-2 mt-2">
-                  <h4 className="text-[13px] font-black text-gray-500 uppercase tracking-wider px-1">
-                    Peringkat 4 sampai 10
-                  </h4>
+                  <div className="flex items-center justify-between px-1">
+                    <h4 className="text-[12px] font-black text-gray-500 uppercase tracking-wider">
+                      Peringkat 4 sampai 10
+                    </h4>
+                    <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                      Skor • Kesalahan • Waktu
+                    </span>
+                  </div>
 
                   {rest.map((entry, idx) => {
                     const rankNum = idx + 4;
@@ -353,12 +388,19 @@ export default function LeaderboardModal({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-[#8B5CF6] text-[12px] font-black border border-purple-200/70">
-                            <Timer className="w-3.5 h-3.5 text-amber-500" />
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className={`inline-block text-[11px] font-black px-2 py-0.5 rounded-full border ${
+                            (entry.wrongCount ?? 0) === 0
+                              ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                              : "text-amber-800 bg-amber-50 border-amber-200"
+                          }`}>
+                            {(entry.wrongCount ?? 0) === 0 ? "0 Salah" : `${entry.wrongCount} Salah`}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-[#8B5CF6] text-[11px] sm:text-[12px] font-black border border-purple-200/70">
+                            <Timer className="w-3 h-3 text-amber-500" />
                             <span>{formatTime(entry.timeSeconds)}</span>
                           </span>
-                          <span className="inline-block text-[12px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200/80">
+                          <span className="inline-block text-[11px] sm:text-[12px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
                             {entry.score}/{entry.totalQuestions}
                           </span>
                         </div>

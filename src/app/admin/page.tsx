@@ -604,6 +604,7 @@ export default function AdminPortalPage() {
                       <th className="py-2.5 px-3">Nama Siswa</th>
                       <th className="py-2.5 px-3">Waktu</th>
                       <th className="py-2.5 px-3">Skor</th>
+                      <th className="py-2.5 px-3">Kesalahan</th>
                       <th className="py-2.5 px-3">Tanggal</th>
                       <th className="py-2.5 px-3">Gelar / Badge</th>
                       <th className="py-2.5 px-3 text-center">Aksi</th>
@@ -612,7 +613,7 @@ export default function AdminPortalPage() {
                   <tbody className="divide-y divide-purple-100 text-[14px] font-bold text-[#1F2937]">
                     {leaderboard.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-10 px-4 text-center">
+                        <td colSpan={8} className="py-10 px-4 text-center">
                           <div className="flex flex-col items-center justify-center">
                             <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl mb-2">
                               🏆
@@ -656,6 +657,17 @@ export default function AdminPortalPage() {
                           <td className="py-3 px-3">
                             <span className="text-emerald-700 font-black">
                               {item.score}/{item.totalQuestions}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`text-[12px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                (item.wrongCount ?? 0) === 0
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
+                              }`}
+                            >
+                              {(item.wrongCount ?? 0) === 0 ? "0 Salah ✨" : `${item.wrongCount} Salah`}
                             </span>
                           </td>
                           <td className="py-3 px-3 text-gray-400 text-[12px]">

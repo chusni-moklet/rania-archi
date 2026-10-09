@@ -45,7 +45,9 @@ export default function QuizModal({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [shakeOptionId, setShakeOptionId] = useState<string | null>(null);
+  const [lockedWrongOptionIds, setLockedWrongOptionIds] = useState<string[]>([]);
   const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
 
   // Status Timer Pengerjaan Kuis (Stopwatch)
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -72,7 +74,9 @@ export default function QuizModal({
     setSelectedOptionId(null);
     setIsAnswered(false);
     setShakeOptionId(null);
+    setLockedWrongOptionIds([]);
     setCorrectCount(0);
+    setWrongCount(0);
     setSecondsElapsed(0);
     setTimerActive(false);
     setEarnedRank(null);
@@ -88,15 +92,17 @@ export default function QuizModal({
     setSecondsElapsed(0);
     setTimerActive(true);
     setEarnedRank(null);
+    setLockedWrongOptionIds([]);
+    setWrongCount(0);
     setStep("questions");
   };
 
   const handleSelectOption = (option: { id: string; label: string; isCorrect: boolean }) => {
     if (isAnswered) return;
-
-    setSelectedOptionId(option.id);
+    if (lockedWrongOptionIds.includes(option.id)) return;
 
     if (option.isCorrect) {
+      setSelectedOptionId(option.id);
       setIsAnswered(true);
       setCorrectCount((prev) => prev + 1);
       sounds.playSuccess();
@@ -117,10 +123,11 @@ export default function QuizModal({
     } else {
       sounds.playBoing();
       setShakeOptionId(option.id);
+      setWrongCount((prev) => prev + 1);
+      setLockedWrongOptionIds((prev) => (prev.includes(option.id) ? prev : [...prev, option.id]));
       setTimeout(() => {
         setShakeOptionId(null);
-        setSelectedOptionId(null);
-      }, 700);
+      }, 600);
     }
   };
 
@@ -129,6 +136,8 @@ export default function QuizModal({
     if (currentIdx + 1 < questions.length) {
       setIsAnswered(false);
       setSelectedOptionId(null);
+      setLockedWrongOptionIds([]);
+      setShakeOptionId(null);
       setCurrentIdx((prev) => prev + 1);
     } else {
       // Selesaikan kuis dan hentikan timer
@@ -141,6 +150,7 @@ export default function QuizModal({
           name: finalName,
           timeSeconds: secondsElapsed,
           score: correctCount,
+          wrongCount: wrongCount,
           totalQuestions: questions.length,
         });
         setEarnedRank(rank);
@@ -303,7 +313,7 @@ export default function QuizModal({
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 flex items-center gap-2.5 text-left">
                 <Timer className="w-5 h-5 text-amber-600 flex-shrink-0" />
                 <span className="text-[13px] font-bold text-amber-900 leading-snug">
-                  Waktu pengerjaan akan dihitung otomatis untuk memperebutkan posisi di <strong>Top 10 Best Player</strong>! ⚡
+                  Waktu dan <strong>jumlah kesalahan</strong> dihitung otomatis untuk menentukan peringkat di <strong>Top 10 Best Player</strong>! Jawab dengan cermat & cepat! 🎯
                 </span>
               </div>
 
@@ -339,7 +349,7 @@ export default function QuizModal({
         {/* ======================================================== */}
         {step === "questions" && q && (
           <div className="p-5 flex flex-col items-center text-center overflow-y-auto">
-            {/* Top Bar: Subtopic, Live Timer, and Student Name */}
+            {/* Top Bar: Subtopic, Live Timer, Mistake Counter, and Student Name */}
             <div className="flex items-center justify-between w-full mb-2 gap-1.5 flex-wrap">
               {/* Subtopic */}
               <div className="flex items-center gap-1.5">
@@ -351,13 +361,27 @@ export default function QuizModal({
                 </span>
               </div>
 
-              {/* Live Stopwatch Timer Pill */}
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border-2 border-emerald-300 text-emerald-800 font-black text-[13px] shadow-xs"
-                title="Waktu pengerjaan kuis"
-              >
-                <Timer className="w-3.5 h-3.5 text-emerald-600 animate-spin" style={{ animationDuration: "4s" }} />
-                <span className="font-mono tracking-wider font-extrabold">{formatTime(secondsElapsed)}</span>
+              <div className="flex items-center gap-1.5">
+                {/* Live Stopwatch Timer Pill */}
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border-2 border-emerald-300 text-emerald-800 font-black text-[12px] sm:text-[13px] shadow-xs"
+                  title="Waktu pengerjaan kuis"
+                >
+                  <Timer className="w-3.5 h-3.5 text-emerald-600 animate-spin" style={{ animationDuration: "4s" }} />
+                  <span className="font-mono tracking-wider font-extrabold">{formatTime(secondsElapsed)}</span>
+                </div>
+
+                {/* Live Mistake Counter Pill */}
+                <div
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-black text-[12px] sm:text-[13px] border shadow-xs transition-colors ${
+                    wrongCount === 0
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : "bg-rose-50 text-rose-700 border-rose-300 animate-in zoom-in-95"
+                  }`}
+                  title="Jumlah kesalahan tebak (kesalahan dihitung pada Leaderboard)"
+                >
+                  <span>{wrongCount === 0 ? "🎯 0 Salah" : `⚠️ ${wrongCount} Salah`}</span>
+                </div>
               </div>
 
               {/* Student Name */}
@@ -383,26 +407,30 @@ export default function QuizModal({
               {q.options.map((opt) => {
                 const isSelected = selectedOptionId === opt.id;
                 const isSuccess = isAnswered && opt.isCorrect;
+                const isLockedWrong = lockedWrongOptionIds.includes(opt.id);
                 const isShake = shakeOptionId === opt.id;
 
                 return (
                   <button
                     key={opt.id}
                     onClick={() => handleSelectOption(opt)}
-                    disabled={isAnswered}
-                    className={`min-h-[58px] p-3 rounded-[16px] font-black text-[18px] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 border-2 ${
+                    disabled={isAnswered || isLockedWrong}
+                    className={`min-h-[58px] p-3 rounded-[16px] font-black text-[18px] transition-all duration-200 flex items-center justify-center gap-2 border-2 ${
                       isSuccess
-                        ? "animate-correct-answer border-[#059669]"
+                        ? "animate-correct-answer border-[#059669] bg-emerald-50 text-emerald-800 shadow-sm"
                         : isShake
-                        ? "bg-red-100 text-red-700 border-red-300 animate-bounce"
+                        ? "bg-rose-100 text-rose-700 border-rose-400 animate-bounce cursor-not-allowed"
+                        : isLockedWrong
+                        ? "bg-rose-50/70 text-rose-400 border-rose-200 cursor-not-allowed line-through opacity-75 shadow-none"
                         : isSelected
                         ? "bg-purple-100 text-[#8B5CF6] border-purple-300"
-                        : "bg-white text-[#1F2937] border-purple-100 hover:border-purple-300 hover:scale-[0.98] active:scale-[0.98] shadow-sm"
+                        : "bg-white text-[#1F2937] border-purple-100 hover:border-purple-300 hover:scale-[0.98] active:scale-[0.98] shadow-sm cursor-pointer"
                     }`}
-                    aria-label={`Pilihan ${opt.id}: ${opt.label}`}
+                    aria-label={`Pilihan ${opt.id}: ${opt.label} ${isLockedWrong ? "(Salah - Terkunci)" : ""}`}
                   >
                     <span>{opt.label}</span>
                     {isSuccess && <CheckCircle className="w-5 h-5 fill-white text-[#10B981]" />}
+                    {isLockedWrong && <X className="w-4 h-4 text-rose-500" />}
                   </button>
                 );
               })}
@@ -472,7 +500,7 @@ export default function QuizModal({
                     <span>Masuk Top 10 Best Player!</span>
                   </p>
                   <p className="text-[12px] font-semibold text-amber-800 leading-tight mt-0.5">
-                    Waktu {formatTime(secondsElapsed)} berhasil membawamu ke Peringkat #{earnedRank}! 🚀
+                    Waktu {formatTime(secondsElapsed)} ({wrongCount === 0 ? "0 Kesalahan 🎯" : `${wrongCount} Kesalahan`}) membawamu ke Peringkat #{earnedRank}! 🚀
                   </p>
                 </div>
               </div>
@@ -498,7 +526,7 @@ export default function QuizModal({
                 Siswa Berbakat Kelas 4 SD yang telah menuntaskan 10 Soal Acak Matematika!
               </p>
 
-              {/* Statistik Hasil Kuis (4 Kolom Termasuk Waktu Stopwatch) */}
+              {/* Statistik Hasil Kuis (4 Kolom Termasuk Kesalahan) */}
               <div className="grid grid-cols-4 gap-1.5 mt-3 pt-3 border-t border-purple-200/60">
                 <div className="flex flex-col items-center">
                   <span className="text-[11px] font-bold text-gray-500">Nilai</span>
@@ -513,17 +541,24 @@ export default function QuizModal({
                   </span>
                 </div>
                 <div className="flex flex-col items-center border-l border-purple-200/60">
+                  <span className="text-[11px] font-bold text-gray-500">Salah</span>
+                  <span className={`text-[17px] font-black ${wrongCount === 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {wrongCount === 0 ? "0 ✨" : `${wrongCount}`}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center border-l border-purple-200/60">
                   <span className="text-[11px] font-bold text-gray-500">Waktu</span>
                   <span className="text-[16px] font-black text-blue-600 font-mono">
                     {formatTime(secondsElapsed)}
                   </span>
                 </div>
-                <div className="flex flex-col items-center border-l border-purple-200/60">
-                  <span className="text-[11px] font-bold text-gray-500">Bintang</span>
-                  <span className="text-[17px] font-black text-amber-500 flex items-center gap-0.5">
-                    +{correctCount} <Star className="w-3.5 h-3.5 fill-amber-500 inline" />
-                  </span>
-                </div>
+              </div>
+
+              <div className="mt-2.5 text-center">
+                <span className="text-[12px] font-black text-amber-600 inline-flex items-center gap-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                  <span>+{correctCount} Bintang Diraih</span>
+                </span>
               </div>
             </div>
 

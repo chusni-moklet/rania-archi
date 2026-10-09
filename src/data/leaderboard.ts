@@ -5,6 +5,7 @@ export interface LeaderboardEntry {
   name: string;
   timeSeconds: number;
   score: number;
+  wrongCount?: number;
   totalQuestions: number;
   date: string;
   badge?: string;
@@ -16,6 +17,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Rania Archi",
     timeSeconds: 38,
     score: 10,
+    wrongCount: 0,
     totalQuestions: 10,
     date: "Hari ini",
     badge: "Juara Bertahan 👑",
@@ -25,6 +27,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Budi Pratama",
     timeSeconds: 45,
     score: 10,
+    wrongCount: 0,
     totalQuestions: 10,
     date: "Kemarin",
     badge: "Kilat Matematika ⚡",
@@ -34,6 +37,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Siti Aisyah",
     timeSeconds: 52,
     score: 10,
+    wrongCount: 0,
     totalQuestions: 10,
     date: "2 hari lalu",
     badge: "Bintang Hitung 🌟",
@@ -43,6 +47,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Ahmad Fauzi",
     timeSeconds: 59,
     score: 10,
+    wrongCount: 1,
     totalQuestions: 10,
     date: "3 hari lalu",
   },
@@ -51,6 +56,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Dewi Lestari",
     timeSeconds: 67,
     score: 10,
+    wrongCount: 1,
     totalQuestions: 10,
     date: "4 hari lalu",
   },
@@ -59,6 +65,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Reza Rahadian",
     timeSeconds: 74,
     score: 10,
+    wrongCount: 2,
     totalQuestions: 10,
     date: "5 hari lalu",
   },
@@ -67,6 +74,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Nadia Putri",
     timeSeconds: 83,
     score: 10,
+    wrongCount: 2,
     totalQuestions: 10,
     date: "Minggu ini",
   },
@@ -75,6 +83,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Kevin Sanjaya",
     timeSeconds: 91,
     score: 9,
+    wrongCount: 1,
     totalQuestions: 10,
     date: "Minggu ini",
   },
@@ -83,6 +92,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Putri Maharani",
     timeSeconds: 98,
     score: 9,
+    wrongCount: 2,
     totalQuestions: 10,
     date: "Minggu ini",
   },
@@ -91,6 +101,7 @@ export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
     name: "Dimas Anggara",
     timeSeconds: 105,
     score: 9,
+    wrongCount: 3,
     totalQuestions: 10,
     date: "Minggu ini",
   },
@@ -167,48 +178,132 @@ export function getLocalLeaderboard(): LeaderboardEntry[] {
 }
 
 /**
+ * Helper untuk mengurutkan Leaderboard:
+ * 1. Skor Tertinggi (Benar terbanyak)
+ * 2. Kesalahan Terkecil (Pemain dengan salah lebih sedikit menang)
+ * 3. Waktu Tercepat (Detik terkecil)
+ */
+export function sortLeaderboardEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  return [...entries].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const aWrong = a.wrongCount ?? 0;
+    const bWrong = b.wrongCount ?? 0;
+    if (aWrong !== bWrong) return aWrong - bWrong;
+    return a.timeSeconds - b.timeSeconds;
+  });
+}
+
+/**
+ * Ekstraksi badge dan wrongCount secara aman.
+ * Jika database Supabase belum memiliki kolom `wrong_count`,
+ * wrongCount disimpan dan diekstrak melalui penanda `[w:X]` di kolom `badge`.
+ */
+export function parseBadgeAndWrongCount(
+  rawBadge: string | null | undefined,
+  rawWrongCount: number | null | undefined
+): { badge?: string; wrongCount: number } {
+  // 1. Jika kolom wrong_count tersedia dari database
+  if (rawWrongCount != null && !isNaN(Number(rawWrongCount))) {
+    const cleanBadge = rawBadge?.replace(/\[w:\d+\]/g, "").trim() || undefined;
+    return { badge: cleanBadge, wrongCount: Number(rawWrongCount) };
+  }
+
+  // 2. Jika wrong_count tersimpan dalam badge format [w:X]
+  if (rawBadge && typeof rawBadge === "string") {
+    const match = rawBadge.match(/\[w:(\d+)\]/);
+    if (match) {
+      const parsedWrong = parseInt(match[1], 10);
+      const cleanBadge = rawBadge.replace(/\[w:\d+\]/g, "").trim() || undefined;
+      return { badge: cleanBadge, wrongCount: isNaN(parsedWrong) ? 0 : parsedWrong };
+    }
+  }
+
+  return { badge: rawBadge || undefined, wrongCount: 0 };
+}
+
+interface DbLeaderboardRow {
+  id: string | number;
+  name: string;
+  time_seconds: number;
+  score: number;
+  wrong_count?: number | null;
+  total_questions?: number;
+  created_at?: string;
+  badge?: string | null;
+}
+
+/**
  * Mengambil data Top 10 Best Player dari Cloud Database Supabase secara online.
  * Menghubungkan langsung ke cloud server sehingga persaingan skor dengan user lain terlihat nyata.
  */
 export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
   if (supabase && isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase
-        .from("leaderboard")
-        .select("id, name, time_seconds, score, total_questions, created_at, badge")
-        .order("score", { ascending: false })
-        .order("time_seconds", { ascending: true })
-        .limit(10);
+      let rawRows: DbLeaderboardRow[] | null = null;
 
-      if (!error && Array.isArray(data)) {
+      const firstQuery = await supabase
+        .from("leaderboard")
+        .select("id, name, time_seconds, score, wrong_count, total_questions, created_at, badge")
+        .order("score", { ascending: false })
+        .order("wrong_count", { ascending: true })
+        .order("time_seconds", { ascending: true })
+        .limit(50);
+
+      if (!firstQuery.error && Array.isArray(firstQuery.data)) {
+        rawRows = firstQuery.data as unknown as DbLeaderboardRow[];
+      } else {
+        // Fallback query jika skema cloud belum ditambahkan wrong_count
+        const fallbackRes = await supabase
+          .from("leaderboard")
+          .select("id, name, time_seconds, score, total_questions, created_at, badge")
+          .order("score", { ascending: false })
+          .order("time_seconds", { ascending: true })
+          .limit(50);
+
+        if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
+          rawRows = fallbackRes.data as unknown as DbLeaderboardRow[];
+        }
+      }
+
+      if (rawRows && Array.isArray(rawRows)) {
         const isCleared =
           typeof window !== "undefined" &&
           localStorage.getItem(LEADERBOARD_CLEARED_KEY) === "true";
 
-        if (data.length === 0 && !isCleared) {
+        if (rawRows.length === 0 && !isCleared) {
           // Jika di Cloud masih kosong dan belum sengaja dihapus admin, inisialisasi benchmark
           await resetToBenchmark();
           return DEFAULT_LEADERBOARD;
         }
 
-        const mapped: LeaderboardEntry[] = data.map((row) => ({
-          id: String(row.id),
-          name: row.name,
-          timeSeconds: Number(row.time_seconds),
-          score: Number(row.score),
-          totalQuestions: Number(row.total_questions || 10),
-          date: formatEntryDate(row.created_at),
-          badge: row.badge || undefined,
-        }));
+        const mapped: LeaderboardEntry[] = rawRows.map((row) => {
+          const { badge: cleanBadge, wrongCount } = parseBadgeAndWrongCount(
+            row.badge,
+            row.wrong_count
+          );
+          return {
+            id: String(row.id),
+            name: row.name,
+            timeSeconds: Number(row.time_seconds),
+            score: Number(row.score),
+            wrongCount,
+            totalQuestions: Number(row.total_questions || 10),
+            date: formatEntryDate(row.created_at),
+            badge: cleanBadge,
+          };
+        });
+
+        const sorted = sortLeaderboardEntries(mapped);
+        const top10 = sorted.slice(0, 10);
 
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(mapped));
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(top10));
           } catch {
             // Ignore
           }
         }
-        return mapped;
+        return top10;
       }
     } catch (e) {
       console.warn("Koneksi Supabase leaderboard bermasalah, menggunakan cache:", e);
@@ -231,25 +326,41 @@ export async function recordQuizCompletion(params: {
   name: string;
   timeSeconds: number;
   score: number;
+  wrongCount?: number;
   totalQuestions: number;
 }): Promise<{ rank: number | null; leaderboard: LeaderboardEntry[] }> {
   const safeName = params.name.trim() || "Pemain RaniaArchi";
-  const badge = params.score === 10 && params.timeSeconds <= 45 ? "Paling Kilat 🚀" : undefined;
+  const safeWrong = params.wrongCount ?? 0;
+  const rawBadge = params.score === 10 && safeWrong === 0 && params.timeSeconds <= 45 ? "Paling Kilat 🚀" : undefined;
+  const fallbackBadge = rawBadge ? `${rawBadge} [w:${safeWrong}]` : `[w:${safeWrong}]`;
 
   // 1. Simpan ke Supabase jika aktif
   if (supabase && isSupabaseConfigured()) {
     try {
-      await supabase.from("leaderboard").insert({
+      const payload: Record<string, unknown> = {
         name: safeName,
         time_seconds: Math.max(1, params.timeSeconds),
         score: params.score,
+        wrong_count: safeWrong,
         total_questions: params.totalQuestions,
-        badge: badge || null,
-      });
+        badge: rawBadge || null,
+      };
+
+      const { error: insertErr } = await supabase.from("leaderboard").insert(payload);
+      if (insertErr) {
+        // Fallback jika kolom wrong_count belum ada di cloud Supabase:
+        // Simpan jumlah salah di dalam field badge agar tetap terbaca!
+        delete payload.wrong_count;
+        payload.badge = fallbackBadge;
+        await supabase.from("leaderboard").insert(payload);
+      }
 
       const freshLeaderboard = await fetchLeaderboard();
       const rankIdx = freshLeaderboard.findIndex(
-        (e) => e.name.toLowerCase() === safeName.toLowerCase() && e.score === params.score
+        (e) =>
+          e.name.toLowerCase() === safeName.toLowerCase() &&
+          e.score === params.score &&
+          (e.wrongCount ?? 0) === safeWrong
       );
       const onlineRank = rankIdx !== -1 ? rankIdx + 1 : null;
 
@@ -270,16 +381,13 @@ export async function recordQuizCompletion(params: {
     name: safeName,
     timeSeconds: Math.max(1, params.timeSeconds),
     score: params.score,
+    wrongCount: safeWrong,
     totalQuestions: params.totalQuestions,
     date: "Baru saja",
-    badge,
+    badge: rawBadge,
   };
 
-  const combined = [...current, newEntry].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.timeSeconds - b.timeSeconds;
-  });
-
+  const combined = sortLeaderboardEntries([...current, newEntry]);
   const top10 = combined.slice(0, 10);
   const rankIndex = top10.findIndex((e) => e.id === newEntry.id);
   const rank = rankIndex !== -1 ? rankIndex + 1 : null;
@@ -359,10 +467,16 @@ export async function resetToBenchmark(): Promise<LeaderboardEntry[]> {
         name: item.name,
         time_seconds: item.timeSeconds,
         score: item.score,
+        wrong_count: item.wrongCount ?? 0,
         total_questions: item.totalQuestions,
         badge: item.badge || null,
       }));
-      await supabase.from("leaderboard").insert(seedData);
+      const { error: seedErr } = await supabase.from("leaderboard").insert(seedData);
+      if (seedErr) {
+        // Fallback jika kolom wrong_count belum ada
+        const fallbackSeed = seedData.map(({ wrong_count, ...rest }) => rest);
+        await supabase.from("leaderboard").insert(fallbackSeed);
+      }
     } catch (err) {
       console.error("Gagal restore benchmark Supabase:", err);
     }

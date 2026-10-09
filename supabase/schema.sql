@@ -11,13 +11,17 @@ CREATE TABLE IF NOT EXISTS public.leaderboard (
   name TEXT NOT NULL,
   time_seconds INTEGER NOT NULL,
   score INTEGER NOT NULL,
+  wrong_count INTEGER DEFAULT 0 NOT NULL,
   total_questions INTEGER DEFAULT 10 NOT NULL,
   badge TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+-- Migrasi untuk tabel yang sudah ada sebelumnya
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS wrong_count INTEGER DEFAULT 0 NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_leaderboard_ranking 
-ON public.leaderboard (score DESC, time_seconds ASC);
+ON public.leaderboard (score DESC, wrong_count ASC, time_seconds ASC);
 
 ALTER TABLE public.leaderboard ENABLE ROW LEVEL SECURITY;
 
@@ -35,18 +39,18 @@ CREATE POLICY "Admin dapat menghapus dan mereset leaderboard"
 ON public.leaderboard FOR DELETE TO anon, authenticated USING (true);
 
 -- Benchmark Awal 10 Pemain
-INSERT INTO public.leaderboard (name, time_seconds, score, total_questions, badge)
+INSERT INTO public.leaderboard (name, time_seconds, score, wrong_count, total_questions, badge)
 VALUES
-  ('Rania Archi', 38, 10, 10, 'Juara Bertahan 👑'),
-  ('Budi Pratama', 45, 10, 10, 'Kilat Matematika ⚡'),
-  ('Siti Aisyah', 52, 10, 10, 'Bintang Hitung 🌟'),
-  ('Ahmad Fauzi', 59, 10, 10, NULL),
-  ('Dewi Lestari', 67, 10, 10, NULL),
-  ('Reza Rahadian', 74, 10, 10, NULL),
-  ('Nadia Putri', 83, 10, 10, NULL),
-  ('Kevin Sanjaya', 91, 9, 10, NULL),
-  ('Putri Maharani', 98, 9, 10, NULL),
-  ('Dimas Anggara', 105, 9, 10, NULL)
+  ('Rania Archi', 38, 10, 0, 10, 'Juara Bertahan 👑'),
+  ('Budi Pratama', 45, 10, 0, 10, 'Kilat Matematika ⚡'),
+  ('Siti Aisyah', 52, 10, 0, 10, 'Bintang Hitung 🌟'),
+  ('Ahmad Fauzi', 59, 10, 1, 10, NULL),
+  ('Dewi Lestari', 67, 10, 1, 10, NULL),
+  ('Reza Rahadian', 74, 10, 2, 10, NULL),
+  ('Nadia Putri', 83, 10, 2, 10, NULL),
+  ('Kevin Sanjaya', 91, 9, 1, 10, NULL),
+  ('Putri Maharani', 98, 9, 2, 10, NULL),
+  ('Dimas Anggara', 105, 9, 3, 10, NULL)
 ON CONFLICT DO NOTHING;
 
 -- ==============================================================================

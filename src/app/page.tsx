@@ -255,7 +255,7 @@ export default function HomeDashboard() {
                   </div>
                   <div>
                     <h3 className="text-[16px] sm:text-[17px] font-black text-[#1F2937]">Best Player</h3>
-                    <p className="text-[12px] sm:text-[13px] font-semibold text-[#6B7280]">Pemain Tercepat 10 Soal</p>
+                    <p className="text-[12px] sm:text-[13px] font-semibold text-[#6B7280]">Skor, Kesalahan & Waktu</p>
                   </div>
                 </div>
                 <span className="text-[11px] sm:text-[12px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
@@ -273,12 +273,21 @@ export default function HomeDashboard() {
                 <div className="bg-white/90 p-2 sm:p-2.5 rounded-xl border border-purple-100 shadow-2xs mt-1.5 space-y-1">
                   {dashboardLeaderboard.slice(0, 3).map((item, idx) => (
                     <div key={item.id} className="flex items-center justify-between text-[11px] sm:text-[12px] font-black text-amber-950">
-                      <span className="truncate max-w-[140px]">
+                      <span className="truncate max-w-[130px]">
                         {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"} #{idx + 1} {item.name}
                       </span>
-                      <span className="font-mono text-purple-700 font-extrabold bg-purple-50 px-2 py-0.2 rounded-full border border-purple-200 text-[10px]">
-                        {formatTime(item.timeSeconds)}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                          (item.wrongCount ?? 0) === 0
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-800 border-amber-200"
+                        }`}>
+                          {(item.wrongCount ?? 0) === 0 ? "0 Salah" : `${item.wrongCount} Salah`}
+                        </span>
+                        <span className="font-mono text-purple-700 font-extrabold bg-purple-50 px-1.5 py-0.2 rounded-full border border-purple-200 text-[10px]">
+                          {formatTime(item.timeSeconds)}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -26,20 +26,24 @@ Fitur **Best Player (Papan Juara Top 10)** pada RaniaArchi telah didesain secara
 3. Buka file [`supabase/schema.sql`](file:///Users/macbookpro/Documents/Project/math-edu/supabase/schema.sql) di proyek ini, lalu salin dan tempel isinya ke editor Supabase:
 
 ```sql
--- 1. Buat tabel leaderboard
+-- 1. Buat tabel leaderboard (atau tambahkan kolom wrong_count jika tabel sudah ada)
 CREATE TABLE IF NOT EXISTS public.leaderboard (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   time_seconds INTEGER NOT NULL,
   score INTEGER NOT NULL,
+  wrong_count INTEGER DEFAULT 0 NOT NULL,
   total_questions INTEGER DEFAULT 10 NOT NULL,
   badge TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- 2. Index performa tinggi untuk peringkat
+-- Perintah migrasi (jika tabel leaderboard Anda sudah ada dari versi sebelumnya):
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS wrong_count INTEGER DEFAULT 0 NOT NULL;
+
+-- 2. Index performa tinggi untuk peringkat: Skor Tertinggi -> Kesalahan Terendah -> Waktu Tercepat
 CREATE INDEX IF NOT EXISTS idx_leaderboard_ranking 
-ON public.leaderboard (score DESC, time_seconds ASC);
+ON public.leaderboard (score DESC, wrong_count ASC, time_seconds ASC);
 
 -- 3. Aktifkan Row Level Security (RLS)
 ALTER TABLE public.leaderboard ENABLE ROW LEVEL SECURITY;
@@ -53,18 +57,18 @@ CREATE POLICY "Semua orang dapat menambahkan skor leaderboard"
 ON public.leaderboard FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- 6. Masukkan 10 pemain awal tolak ukur (benchmark)
-INSERT INTO public.leaderboard (name, time_seconds, score, total_questions, badge)
+INSERT INTO public.leaderboard (name, time_seconds, score, wrong_count, total_questions, badge)
 VALUES
-  ('Rania Archi', 38, 10, 10, 'Juara Bertahan 👑'),
-  ('Budi Pratama', 45, 10, 10, 'Kilat Matematika ⚡'),
-  ('Siti Aisyah', 52, 10, 10, 'Bintang Hitung 🌟'),
-  ('Ahmad Fauzi', 59, 10, 10, NULL),
-  ('Dewi Lestari', 67, 10, 10, NULL),
-  ('Reza Rahadian', 74, 10, 10, NULL),
-  ('Nadia Putri', 83, 10, 10, NULL),
-  ('Kevin Sanjaya', 91, 9, 10, NULL),
-  ('Putri Maharani', 98, 9, 10, NULL),
-  ('Dimas Anggara', 105, 9, 10, NULL);
+  ('Rania Archi', 38, 10, 0, 10, 'Juara Bertahan 👑'),
+  ('Budi Pratama', 45, 10, 0, 10, 'Kilat Matematika ⚡'),
+  ('Siti Aisyah', 52, 10, 0, 10, 'Bintang Hitung 🌟'),
+  ('Ahmad Fauzi', 59, 10, 1, 10, NULL),
+  ('Dewi Lestari', 67, 10, 1, 10, NULL),
+  ('Reza Rahadian', 74, 10, 2, 10, NULL),
+  ('Nadia Putri', 83, 10, 2, 10, NULL),
+  ('Kevin Sanjaya', 91, 9, 1, 10, NULL),
+  ('Putri Maharani', 98, 9, 2, 10, NULL),
+  ('Dimas Anggara', 105, 9, 3, 10, NULL);
 ```
 
 4. Klik tombol **"Run"** (atau tekan `Ctrl+Enter` / `Cmd+Enter`).
